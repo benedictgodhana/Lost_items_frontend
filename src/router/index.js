@@ -1,9 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import AdminDashboard from '../views/Admin/dashboard.vue'
+import AdminManageClaimedItems from '../views/Admin/ManageClaimedItems.vue'
 import AdminManageLostItems from '../views/Admin/ManageLostItems.vue'
 import AdminManageUser from '../views/Admin/ManageUser.vue'
-
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -23,6 +23,12 @@ const router = createRouter({
       path: '/admin/manage-lost-items',
       name: 'manage-lost-items',
       component: AdminManageLostItems,
+      meta: { requiresAuth: true } // Add meta field for authentication
+    },
+    {
+      path: '/admin/manage-claimed-items',
+      name: 'manage-claimed-items',
+      component: AdminManageClaimedItems,
       meta: { requiresAuth: true } // Add meta field for authentication
     },
     {

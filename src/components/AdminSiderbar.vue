@@ -23,6 +23,16 @@
       >
       </v-list-item>
 
+      <v-list-item
+        to="/admin/manage-claimed-items"
+        prepend-icon=" mdi-laptop"
+        color="white"
+        title="Manage Claimed Items"
+        elevation="0"
+        active-class="active-button"
+      >
+      </v-list-item>
+
       <!-- Manage Users -->
       <v-list-item
         to="/admin/manage-users"

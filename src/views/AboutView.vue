@@ -31,7 +31,8 @@
           <v-card-title>Report Lost Item</v-card-title>
           <v-card-text>
             <!-- Lost item claim form -->
-            <v-form>
+            <v-form enctype="multipart/form-data">
+                
               <v-text-field
                 v-model="lostItem.name"
                 label="Name"
@@ -66,6 +67,7 @@
               ></v-text-field>
               <!-- Add more fields as needed -->
               <input type="hidden" v-model="lostItem.status" value="lost" />
+
 
               <v-file-input
                 v-model="lostItem.image"
@@ -122,55 +124,71 @@ export default {
       date_found: '',
       owner: '',
       status: ''
-
-      // Add other fields as needed
     })
+    const csrfToken = ref(null) // Add a reactive variable for the CSRF token
 
     const handleImageUpload = (event) => {
-  const file = event.target.files[0];
-  if (file) {
-    lostItem.value.image = file;
-  }
-};
-
-
+      const file = event.target.files[0]
+      if (file) {
+        lostItem.value.image = file
+      }
+    }
 
     const openClaimFormDialog = () => {
-      // Open the claim form dialog
       claimDialog.value = true
     }
 
+    const fetchCSRFToken = () => {
+      axios
+        .get('http://127.0.0.1:8000/api/csrf/')
+        .then((response) => {
+          csrfToken.value = response.data.csrfToken
+        })
+        .catch((error) => {
+          console.error('Failed to fetch CSRF token:', error)
+        })
+    }
+
     const submitClaim = async () => {
-  try {
-    const formData = new FormData();
-    formData.append('name', lostItem.value.name);
-    formData.append('description', lostItem.value.description);
-    formData.append('location', lostItem.value.location);
-    formData.append('date_found', lostItem.value.date_found);
-    formData.append('owner', lostItem.value.owner);
-    formData.append('status', lostItem.value.status);
-    formData.append('image', lostItem.value.image);
+      try {
+        // Fetch CSRF token if not already fetched
+        if (!csrfToken.value) {
+          await fetchCSRFToken()
+        }
 
-    const response = await axios.post('http://127.0.0.1:8000/api/lostitems/', formData);
+        const formData = new FormData()
+        formData.append('name', lostItem.value.name)
+        formData.append('description', lostItem.value.description)
+        formData.append('location', lostItem.value.location)
+        formData.append('date_found', lostItem.value.date_found)
+        formData.append('owner', lostItem.value.owner)
+        formData.append('status', lostItem.value.status)
+        formData.append('image', lostItem.value.image)
 
-    console.log('Submitted Lost Item:', response.data);
+        const response = await axios.post('http://127.0.0.1:8000/api/lostitems/', formData, {
+          headers: {
+            'X-CSRFToken': csrfToken.value, // Pass CSRF token with the request
+            'Content-Type': 'multipart/form-data'
+          }
+        })
 
-    lostItem.value = {
-      name: '',
-      description: '',
-      location: '',
-      date_found: '',
-      owner: '',
-      image: '',
-      status: ''
-    };
+        console.log('Submitted Lost Item:', response.data)
 
-    claimDialog.value = false;
-  } catch (error) {
-    console.error('Error submitting lost item:', error);
-  }
-};
-
+        // Reset lostItem fields and close dialog
+        lostItem.value = {
+          name: '',
+          description: '',
+          location: '',
+          date_found: '',
+          owner: '',
+          image: '',
+          status: ''
+        }
+        claimDialog.value = false
+      } catch (error) {
+        console.error('Error submitting lost item:', error)
+      }
+    }
 
     return {
       claimDialog,

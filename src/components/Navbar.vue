@@ -27,30 +27,13 @@
     >
       <v-icon size="16">mdi-home</v-icon>Home
     </v-btn>
-    <v-btn
-      style="margin: 2px; font-weight: 500; font-family: 'poppins'; text-transform: lowercase"
-      text
-      to="/about"
-      class="hidden-sm-and-down"
-    >
-      <v-icon size="16">mdi-comment-quote</v-icon> Report Lost Item
-    </v-btn>
-
-    <v-btn
-      style="font-weight: 500; font-family: 'poppins'; text-transform: lowercase"
-      text
-      to="/contact"
-      class="hidden-sm-and-down"
-    >
-      <v-icon size="16">mdi-phone</v-icon>Contact
-    </v-btn>
 
     <v-btn
       style="font-weight: 500; font-family: 'poppins'; text-transform: lowercase"
       @click="showSignUpModal"
       class="hidden-sm-and-down"
     >
-      <v-icon size="16">mdi-account-plus</v-icon>Register
+      <v-icon size="16">mdi-comment-quote</v-icon>Report Lost Item
     </v-btn>
     <!-- Button to open the sidebar on small screens -->
 
@@ -153,57 +136,81 @@
       </v-card-text>
     </v-card>
   </v-dialog>
-
   <v-dialog v-model="signUpModal" max-width="600px">
-    <v-card style="border-radius: 2px" elevation="4">
-      <v-card-title class="text-center" style="font-weight: 800">Sign Up</v-card-title>
-      <v-card-text>
-        <v-form @submit.prevent="signUp">
-          <input type="hidden" name="csrfmiddlewaretoken" :value="csrfToken" />
-          <v-text-field
-            v-model="signUpData.username"
-            label="Name"
-            required
-            variant="outlined"
-          ></v-text-field>
-          <v-text-field
-            v-model="signUpData.email"
-            label="Email"
-            required
-            variant="outlined"
-          ></v-text-field>
-          <v-text-field
-            v-model="signUpData.password"
-            label="Password"
-            type="password"
-            required
-            variant="outlined"
-          ></v-text-field>
-          <v-text-field
-            v-model="signUpData.passwordConfirmation"
-            label="Confirm Password"
-            type="password"
-            required
-            variant="outlined"
-          ></v-text-field>
-          <v-btn
-            :loading="loading"
-            type="submit"
-            style="
-              border-radius: 2px;
-              width: 100%;
-              text-transform: lowercase;
-              background: green;
-              color: white;
-            "
-          >
-            <v-icon left style="margin: 3px">mdi-account-plus</v-icon>
-            Sign Up
-          </v-btn>
-        </v-form>
-      </v-card-text>
-    </v-card>
-  </v-dialog>
+  <v-card style="border-radius: 2px" elevation="4">
+    <v-card-title class="text-center" style="font-weight: 800; background: green; color: white"
+      >Report for a lost Item</v-card-title
+    >
+    <v-card-text>
+      <v-form @submit.prevent="signUp" enctype="multipart/form-data">
+        <input type="hidden" name="csrfmiddlewaretoken" :value="csrfToken" />
+        <v-text-field
+          v-model="signUpData.name"
+          label="Name of Item"
+          required
+          variant="outlined"
+        ></v-text-field>
+        <v-text-field
+          v-model="signUpData.description"
+          label="Description"
+          type="text"
+          required
+          variant="outlined"
+        ></v-text-field>
+        <v-text-field
+          v-model="signUpData.location"
+          label="Location"
+          required
+          variant="outlined"
+        ></v-text-field>
+        <v-text-field
+          v-model="signUpData.date_found"
+          label="Lost Date"
+          type="date"
+          required
+          variant="outlined"
+        ></v-text-field>
+        <v-text-field
+          v-model="signUpData.owner"
+          label="Owner"
+          required
+          variant="outlined"
+        ></v-text-field>
+        <!-- Display the image path -->
+        <img v-if="signUpData.image" :src="signUpData.image" alt="Uploaded Image" style="max-width: 100%; margin-bottom: 10px;">
+        <!-- Add image field -->
+        <v-file-input
+          v-model="signUpData.image"
+          label="Upload Image"
+          outlined
+          variant="outlined"
+        ></v-file-input>
+        <!-- Add status field -->
+        <v-text-field
+          v-model="signUpData.status"
+          required
+          value="lost"
+          type="hidden"
+        ></v-text-field>
+
+        <v-btn
+          :loading="loading"
+          type="submit"
+          style="
+            border-radius: 2px;
+            width: 100%;
+            text-transform: lowercase;
+            background: green;
+            color: white;
+          "
+        >
+          <v-icon left style="margin: 3px">mdi-link</v-icon> Submit
+        </v-btn>
+      </v-form>
+    </v-card-text>
+  </v-card>
+</v-dialog>
+
 </template>
 <script>
 import axios from 'axios'
@@ -222,10 +229,13 @@ export default {
       signInModal: false,
       signUpModal: false,
       signUpData: {
-        username: '',
-        email: '',
-        password: '',
-        passwordConfirmation: ''
+        name: '',
+        description: '',
+        location: '',
+        date_found: '',
+        owner: '',
+        image: null, // Initialize image field
+        status: '' // Initialize status field
       },
       signInData: {
         email: '',
@@ -272,36 +282,6 @@ export default {
     },
 
     signIn() {
-  this.loading = true
-
-  // Include CSRF token in the request headers
-  const headers = {
-    'X-CSRFToken': this.csrfToken
-  }
-
-  axios
-    .post('http://127.0.0.1:8000/api/login/', this.signInData, { headers })
-    .then((response) => {
-      // Handle successful login
-      console.log('Login successful:', response.data)
-
-      // Save token to local storage
-      localStorage.setItem('token', response.data.token)
-
-      // Redirect to the dashboard
-      window.location.href = '/dashboard' // Change '/admin' to the URL of your admin page
-    })
-    .catch((error) => {
-      // Handle login error
-      console.error('Login failed:', error.response.data)
-    })
-    .finally(() => {
-      this.loading = false
-    })
-},
-
-
-    signUp() {
       this.loading = true
 
       // Include CSRF token in the request headers
@@ -310,7 +290,50 @@ export default {
       }
 
       axios
-        .post('http://127.0.0.1:8000/api/register/', this.signUpData, { headers })
+        .post('http://127.0.0.1:8000/api/login/', this.signInData, { headers })
+        .then((response) => {
+          // Handle successful login
+          console.log('Login successful:', response.data)
+
+          // Save token to local storage
+          localStorage.setItem('token', response.data.token)
+
+          // Redirect to the dashboard
+          window.location.href = '/dashboard' // Change '/admin' to the URL of your admin page
+        })
+        .catch((error) => {
+          // Handle login error
+          console.error('Login failed:', error.response.data)
+        })
+        .finally(() => {
+          this.loading = false
+        })
+    },
+
+    signUp() {
+      this.loading = true
+
+      // Format the date to match the expected format
+      this.signUpData.date_found = this.formatDate(this.signUpData.date_found)
+
+      // Create FormData object to send file data
+      let formData = new FormData()
+      formData.append('name', this.signUpData.name)
+      formData.append('description', this.signUpData.description)
+      formData.append('location', this.signUpData.location)
+      formData.append('date_found', this.signUpData.date_found)
+      formData.append('owner', this.signUpData.owner)
+      formData.append('image', this.signUpData.image) // Append image as file
+      formData.append('status', this.signUpData.status)
+
+      // Include CSRF token in the request headers
+      const headers = {
+        'X-CSRFToken': this.csrfToken,
+        'Content-Type': 'multipart/form-data' // Set content type for file upload
+      }
+
+      axios
+        .post('http://127.0.0.1:8000/api/lostitems/', formData, { headers })
         .then((response) => {
           // Handle successful registration
           console.log('Registration successful:', response.data)
@@ -323,9 +346,20 @@ export default {
         .finally(() => {
           this.loading = false
         })
-      // Implementation for signing up
+    },
+
+    formatDate(date) {
+      // Format the date to YYYY-MM-DD
+      return date.toISOString().split('T')[0]
+    },
+
+    handleImageUpload(event) {
+      // Capture the first file from the event
+      const file = event.target.files[0]
+      this.signUpData.image = file // Set the image data in the signup data object
     }
   },
+
   watch: {
     $route(to, from) {
       this.signInModal = false

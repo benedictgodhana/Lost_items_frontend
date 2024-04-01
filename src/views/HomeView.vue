@@ -1,10 +1,11 @@
 <template>
   <div>
+    <!-- Navbar component -->
     <Navbar></Navbar>
 
-    <!-- Add search input -->
-
+    <!-- Carousel -->
     <v-carousel height="600" :show-arrows="false" hide-delimiters>
+      <!-- Carousel item -->
       <v-carousel-item src="/Curious-rafiki.png">
         <!-- Darkened image with overlay text -->
         <div class="darkened-image">
@@ -17,7 +18,9 @@
       </v-carousel-item>
     </v-carousel>
 
+    <!-- Container -->
     <v-container>
+      <!-- Search input -->
       <v-row>
         <v-col cols="12">
           <v-text-field
@@ -28,9 +31,16 @@
           ></v-text-field>
         </v-col>
       </v-row>
+
+      <v-alert v-if="claimSubmissionStatus" :value="true" type="success" style="margin-top: 10px">
+        Claim submitted successfully!
+      </v-alert>
+      <br />
+
+      <!-- Display lost items -->
       <v-row>
         <v-col v-for="(item, index) in displayedLostItems" :key="item.id" cols="12" sm="6" md="4">
-          <v-card variant="outlined" elevation="4">
+          <v-card variant="outlined" elevation="4" style="border-radius: 10px">
             <!-- Display the image -->
             <v-img
               :src="item.image"
@@ -41,37 +51,43 @@
             ></v-img>
             <v-card-title>{{ item.name }}</v-card-title>
             <v-card-text>
-              <strong>Description:</strong>{{ item.description }}<br />
               <strong>Location:</strong> {{ item.location }} <br />
+              <strong>Date Found:</strong> {{ item.date_found }} <br />
               <strong>Status:</strong> {{ item.status }} <br />
-              <strong>Owner:</strong>{{ item.owner }}
             </v-card-text>
             <v-card-actions>
+              <!-- Claim button -->
               <v-btn
                 color="white"
                 @click="openClaimForm(item)"
                 style="background: green; text-transform: lowercase; width: 100%"
               >
-                <v-icon>mdi-check</v-icon>Claim</v-btn
-              >
+                <v-icon>mdi-check</v-icon>Claim
+              </v-btn>
             </v-card-actions>
           </v-card>
         </v-col>
       </v-row>
+
+      <!-- View all button -->
       <v-row v-if="filteredLostItems.length > displayedLostItems.length">
         <v-col cols="12" class="text-center">
           <v-btn
             @click="viewAll"
             width="100%"
             style="text-transform: capitalize; background: green; color: white"
-            ><v-icon>mdi-eye</v-icon>View All</v-btn
           >
+            <v-icon>mdi-eye</v-icon>View All
+          </v-btn>
         </v-col>
       </v-row>
+
+      <!-- No lost items message -->
       <div v-else-if="filteredLostItems.length === 0">
         <p>No lost items found.</p>
       </div>
     </v-container>
+
     <!-- Image dialog -->
     <v-dialog v-model="dialog" max-width="500px">
       <v-card>
@@ -85,19 +101,49 @@
     <!-- Claim form dialog -->
     <v-dialog v-model="claimDialog" max-width="500px">
       <v-card>
-        <v-card-title>Claim Form</v-card-title>
+        <!-- Claim form title with selected item name -->
+        <v-card-title class="text-center" style="background: green; color: white"
+          >Claim Form {{ selectedItem.name }}</v-card-title
+        >
         <v-card-text>
-          <!-- Your claim form fields here -->
+          <!-- Claim form fields -->
+          <v-text-field v-model="claimantName" label="Your Name" variant="outlined"></v-text-field>
+          <v-text-field
+            v-model="claimantContact"
+            label="Contact Information"
+            variant="outlined"
+          ></v-text-field>
+          <v-textarea
+            v-model="claimDescription"
+            label="Description of Claim"
+            variant="outlined"
+          ></v-textarea>
+
+          <v-checkbox v-model="isVerified" label="Confirm claim verification"></v-checkbox>
         </v-card-text>
+
         <v-card-actions>
-          <v-btn color="primary" text @click="claimDialog = false">Cancel</v-btn>
-          <v-btn color="primary" @click="submitClaim">Submit</v-btn>
+          <!-- Cancel and Submit buttons -->
+          <v-btn
+            color="white"
+            text
+            @click="claimDialog = false"
+            style="background: red; text-transform: capitalize"
+            >Cancel</v-btn
+          >
+          <v-btn
+            color="white"
+            @click="submitClaim"
+            style="background: green; text-transform: capitalize"
+            >Submit</v-btn
+          >
         </v-card-actions>
       </v-card>
     </v-dialog>
-  </div>
 
-  <Footer />
+    <!-- Footer component -->
+    <Footer />
+  </div>
 </template>
 <script>
 import { ref, onMounted, computed } from 'vue'
@@ -111,22 +157,28 @@ export default {
     Footer
   },
   setup() {
+    const claimSubmissionStatus = ref(false)
+    const isVerified = ref(false) // Initially set to false
+    // Define reactive variables
     const lostItems = ref([])
     const dialog = ref(false)
     const dialogImage = ref('')
     const searchQuery = ref('')
     const displayedLostItems = ref([])
     const claimDialog = ref(false)
+    const claimantName = ref('')
+    const claimantContact = ref('')
+    const claimDescription = ref('')
+    const claimError = ref('')
+    const selectedItem = ref(null)
 
+    // Fetch lost items from the API on component mount
     onMounted(async () => {
       try {
         const response = await axiosInstance.get('/lostitems/')
         lostItems.value = response.data
         // Initially display first 6 items
         displayedLostItems.value = lostItems.value.slice(0, 6)
-
-        // Fetch owner names for all items
-        await fetchOwnerNames()
       } catch (error) {
         console.error('Error fetching lost items:', error)
       }
@@ -139,43 +191,90 @@ export default {
           item.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
           item.description.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
           item.location.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-          item.status.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-          item.ownerName.toLowerCase().includes(searchQuery.value.toLowerCase()) // Search by owner name
+          item.status.toLowerCase().includes(searchQuery.value.toLowerCase())
       )
     })
 
+    // Show image dialog with the clicked image
     const showImageDialog = (imageSrc) => {
       dialogImage.value = imageSrc
       dialog.value = true
     }
 
+    // Open claim form dialog with the selected item
     const openClaimForm = (item) => {
-      // Show claim form dialog
+      selectedItem.value = item
       claimDialog.value = true
     }
 
+    // Display all filtered lost items
     const viewAll = () => {
-      // Display all filtered lost items
       displayedLostItems.value = [...filteredLostItems.value]
     }
 
-    const submitClaim = () => {
-      // Handle claim submission
+    // Submit claim form data
+    const submitClaim = async () => {
+      try {
+        // Make POST request to submit claim
+        const response = await axiosInstance.post('/claims/', {
+          lost_item: selectedItem.value.id,
+          claimant_name: claimantName.value,
+          claimant_contact: claimantContact.value,
+          description: claimDescription.value,
+          is_verified: isVerified.value // Include is_verified field in the request
+        })
+
+        // Handle successful claim submission
+        console.log(response.data)
+
+        // Check if the claim was successfully verified
+        if (response.data.is_verified) {
+          // Set is_verified to true in the claim object
+          selectedItem.value.is_verified = true
+        }
+
+        claimSubmissionStatus.value = true
+
+        // Automatically hide the alert after 4 seconds
+        setTimeout(() => {
+          claimSubmissionStatus.value = false
+        }, 4000)
+        // Close claim form dialog
+        claimDialog.value = false
+      } catch (error) {
+        // Handle claim submission error
+        console.error('Error submitting claim:', error.response.data)
+        claimError.value = error.response.data.error || 'Failed to submit claim'
+      }
     }
 
-    // Fetch owner names for all items
+    // Method to update is_verified when checkbox changes
+    const updateIsVerified = () => {
+      if (isVerified.value) {
+        // Checkbox is checked, set is_verified to true
+        isVerified.value = true
+      }
+    }
 
+    // Return reactive variables and functions
     return {
+      claimSubmissionStatus,
       displayedLostItems,
       dialog,
       dialogImage,
-      showImageDialog,
       searchQuery,
-      openClaimForm,
-      viewAll,
       claimDialog,
       filteredLostItems,
-      submitClaim
+      claimantName,
+      claimantContact,
+      claimDescription,
+      claimError,
+      selectedItem,
+      showImageDialog,
+      openClaimForm,
+      viewAll,
+      submitClaim,
+      updateIsVerified // Include the updateIsVerified method in the return object
     }
   }
 }

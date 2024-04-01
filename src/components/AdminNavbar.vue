@@ -30,24 +30,41 @@
     </v-btn>
   </v-app-bar>
 </template>
-
 <script>
-import axiosInstance from '@/service/api' // Import Axios instance
+import axios from 'axios' // Import Axios instance
 
 export default {
+  data() {
+    return {
+      csrfToken: '' // Initialize CSRF token
+    }
+  },
   methods: {
     navigateToProfile() {
       // Define navigation logic to the profile page
     },
+    navigateToNotifications() {
+      // Define navigation logic to the notifications page
+    },
+
+    async fetchCSRFToken() {
+      try {
+        const response = await axios.get('http://127.0.0.1:8000/api/csrf/')
+        this.csrfToken = response.data.csrfToken
+      } catch (error) {
+        console.error('Failed to fetch CSRF token:', error)
+      }
+    },
+
     async logout() {
       try {
-        // Get the authentication token from localStorage
-        const authToken = localStorage.getItem('token')
+        // Fetch CSRF token before logging out
+        await this.fetchCSRFToken()
 
         // Make a POST request to the logout endpoint
-        await axiosInstance.post('/logout', null, {
+        await axios.post('http://127.0.0.1:8000/api/logout/', null, {
           headers: {
-            Authorization: `Bearer ${authToken}`
+            'X-CSRFToken': this.csrfToken // Include CSRF token in the request headers
           }
         })
 
@@ -60,7 +77,16 @@ export default {
       } catch (error) {
         console.error('Error logging out:', error)
       }
+    },
+    getCookie(name) {
+      const value = `; ${document.cookie}`
+      const parts = value.split(`; ${name}=`)
+      if (parts.length === 2) return parts.pop().split(';').shift()
     }
+  },
+  created() {
+    // Fetch CSRF token when the component is created
+    this.fetchCSRFToken()
   }
 }
 </script>
